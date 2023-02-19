@@ -1,9 +1,11 @@
+
+---
 - name: "Wordpress hosting"
   become: yes
   hosts: amazon,ubuntu
   tasks:
-    - include_tasks: amazon-linux-wordpress-task.yml
+    - include_tasks: amazon-linux-wp-task.yml
       when: ansible_distribution == "Amazon" and ansible_os_family == "RedHat"
 
-    - include_tasks: ubuntu-wordpress-task.yml
+    - include_tasks: ubuntu-wp-task.yml
       when: ansible_distribution == "Ubuntu" and ansible_os_family == "Debian"   
