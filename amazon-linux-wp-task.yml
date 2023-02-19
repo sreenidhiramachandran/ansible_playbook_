@@ -1,0 +1,172 @@
+---
+- name: "Apache - Installing apache webserver"
+  yum:
+    name: httpd
+    state: present
+  tags:
+    - lamp
+   
+- name: "Apache - enabling php support"
+  shell: amazon-linux-extras install php7.4 -y
+  tags:
+    - lamp
+
+- name: "Apache- Creating httpd.conf from httpd.conf.j2 template"
+  template:
+    src: ./httpd.conf.j2
+    dest: /etc/httpd/conf/httpd.conf
+  tags:
+    - lamp
+
+- name: "Apache - Creating Virtualhost from virtualhost.conf.j2 template"
+  template:
+    src: "./virtualhost.conf.j2"
+    dest: "/etc/httpd/conf.d/{{ httpd_domain }}.conf"
+    owner: "{{httpd_owner}}"
+    group: "{{httpd_group}}"
+  tags:
+    - lamp
+
+- name: "Apache- Creating document root /var/www/html/{{ httpd_domain }}"
+  file:
+    path: "/var/www/html/{{ httpd_domain }}"
+    state: directory
+    owner: "{{httpd_owner}}"
+    group: "{{httpd_group}}"        
+  tags:
+    - lamp
+        
+- name: "Apache - Creating sample website pages"
+  copy:
+    src: "{{item}}"
+    dest: "/var/www/html/{{ httpd_domain }}"
+    owner: "{{httpd_owner}}"
+    group: "{{httpd_group}}"
+  with_items:
+    - test.html
+    - test.php
+  tags:
+    - lamp
+
+- name: "Mariadb-server - package installation"
+  yum:
+    name: 
+      - mariadb-server
+      - MySQL-python
+    state: present
+  tags:
+    - lamp
+    - mariadb
+
+- name: "Restarting Mariadb service"
+  service:
+    name: mariadb
+    state: restarted
+    enabled: true
+  tags:
+    - lamp
+    - mariadb
+
+- name: "Mariadb- Updating root password"
+  ignore_errors: true
+  mysql_user:
+    login_user: "root"
+    login_password: ""
+    name: "root"
+    password: "{{ mysql_root_password }}"
+    state: present  
+    host_all: true
+  tags:
+    - lamp
+    - mariadb
+
+- name: "Mariadb-server - Deleting anonymous users"
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_password }}"
+    name: ""
+    password: ""
+    host_all: true
+    state: absent  
+  tags:
+    - lamp
+    - mariadb
+
+- name: "Mariadb-server - Creating database {{mysql_new_database}}"
+  mysql_db:
+    login_user: "root"
+    login_password: "{{ mysql_root_password }}"
+    name: "{{ mysql_new_database }}"
+    state: present
+  tags:
+    - lamp
+    - mariadb
+
+- name: "Mariadb-server - Create new user {{ mysql_new_user }}"
+  mysql_user:
+    login_user: "root"
+    login_password: "{{ mysql_root_password }}"
+    name: "{{ mysql_new_user }}"
+    password: "{{ mysql_user_password }}"   
+    state: present
+    host: "%"
+    priv: "{{mysql_new_database}}.*:ALL"
+  tags:
+    - lamp
+    - mariadb
+
+- name: "Wordpress - Downloading archive file {{ wp_url }}"
+  get_url:
+    url: "{{ wp_url }}"
+    dest: "/tmp/wordpress.tar.gz"
+  tags:
+    - Wordpress
+
+
+- name: "Wordpress - Extracting wordpress archive /tmp/wordpress.tar.gz"
+  unarchive:
+    src: "/tmp/wordpress.tar.gz"
+    dest: "/tmp"
+    remote_src: true
+  tags:
+    - Wordpress
+
+- name: "Wordpress - Copying files to /var/www/html/{{ httpd_domain }}"
+  copy:
+    src: "/tmp/wordpress/"
+    dest: "/var/www/html/{{ httpd_domain }}"
+    remote_src: true
+    owner: "{{httpd_owner}}"
+    group: "{{httpd_group}}" 
+  tags:
+    - Wordpress
+
+- name: "Wordpress - Creating wp-config.php from wp-config.php.j2 template"
+  template:
+    src: "./wp-config.php.j2"
+    dest: "/var/www/html/{{ httpd_domain }}/wp-config.php"
+    owner: "{{httpd_owner}}"
+    group: "{{httpd_group}}" 
+  tags:
+    - Wordpress
+
+- name: "Post-installation - Restart"
+  service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: true
+  with_items:
+    - httpd
+    - mariadb
+  tags:
+    - lamp
+
+- name: "Post-installation - Cleanup"
+  file:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - "/tmp/wordpress.tar.gz"
+    - "/tmp/wordpress/"
+  tags:
+    - Wordpress
