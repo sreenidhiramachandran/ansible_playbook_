@@ -1,5 +1,5 @@
 # playbook_1
-Wordpress installation on ubuntu server using ansible-playbook
+Wordpress installation on amazon linux and ubuntu servers using ansible-playbook
 
 
 ![image](https://user-images.githubusercontent.com/120683482/219970378-d6bc9c4a-f624-4377-b470-da3641a0040a.png)
